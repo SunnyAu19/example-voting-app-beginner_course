@@ -1,16 +1,25 @@
-FROM node:5.11.0-slim
+FROM node:18-slim
 
-WORKDIR /app
+# add curl for healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl tini && \
+    rm -rf /var/lib/apt/lists/*
 
+WORKDIR /usr/local/app
+
+# have nodemon available for local dev use (file watching)
 RUN npm install -g nodemon
-ADD package.json /app/package.json
-RUN npm config set registry http://registry.npmjs.org
-RUN npm install && npm ls
-RUN mv /app/node_modules /node_modules
 
-ADD . /app
+COPY package*.json ./
 
-ENV PORT 80
+RUN npm ci && \
+ npm cache clean --force && \
+ mv /usr/local/app/node_modules /node_modules
+
+COPY . .
+
+ENV PORT=80
 EXPOSE 80
 
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "server.js"]
